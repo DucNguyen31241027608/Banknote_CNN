@@ -1,0 +1,38 @@
+# Lấy class_labels từ thư mục (tên folder chính là nhãn)
+class_labels = labels
+
+# Load model đã train
+MODEL = load_model("/content/drive/MyDrive/banknote_cnn.h5")
+
+def predict_image(image):
+    if image is None:
+        return "Chưa có ảnh", None
+
+    # Resize và chuẩn hóa
+    img = image.resize((img_size, img_size))
+    arr = img_to_array(img).astype("float32") / 255.0
+    arr = np.expand_dims(arr, axis=0)
+
+    preds = MODEL.predict(arr)[0]  # shape (num_classes,)
+    top_idx = preds.argsort()[::-1][:3]  # lấy top-3
+    result_text = "Top 3 dự đoán:\n"
+    for i in top_idx:
+        result_text += f"- {class_labels[i]}: {preds[i]*100:.2f}%\n"
+
+    prob_dict = {class_labels[i]: float(preds[i]) for i in range(len(class_labels))}
+
+    return result_text, prob_dict
+
+with gr.Blocks() as demo:
+    gr.Markdown("# 💵 Nhận diện tiền Việt Nam bằng CNN")
+    gr.Markdown("Upload ảnh tờ tiền (mặt trước hoặc sau).")
+
+    inp = gr.Image(type="pil", label="Upload ảnh")
+    out_text = gr.Textbox(label="Kết quả dự đoán")
+    out_plot = gr.Label(num_top_classes=len(class_labels), label="Xác suất các lớp")
+
+
+    btn = gr.Button("Predict")
+    btn.click(predict_image, inputs=inp, outputs=[out_text, out_plot])
+
+demo.launch(share=True)  # nếu chỉ test local thì để share=False
